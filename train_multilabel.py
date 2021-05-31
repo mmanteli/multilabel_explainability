@@ -37,7 +37,7 @@ def read_dataset():
   """
   
   with open('fr_binarized.pkl', 'rb') as f:
-  dataset = pickle.load(f)
+    dataset = pickle.load(f)
   print("Dataset succesfully loaded")
   print(dataset)
   return dataset
