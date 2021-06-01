@@ -8,8 +8,9 @@ import pickle
 import sys
 import torch
 from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampler
-from torch import cuda
 import numpy as np
+from sklearn.metrics import classification_report, confusion_matrix, multilabel_confusion_matrix, f1_score, accuracy_score
+
 
 
 # Hyperparameters
@@ -55,9 +56,17 @@ def encode_dataset(d):
     return output
 
 def compute_accuracy(pred):
-  y_pred = pred.predictions.argmax(axis=1)
-  y_true = pred.label_ids
-  return { 'accuracy': sum(y_pred == y_true) / len(y_true) }
+    # flatten them to 1D vectors
+    y_pred = pred.predictions.flatten()
+    y_true = pred.label_ids.flatten()
+
+    # apply sigmoid
+    y_pred_s = 1.0/(1.0 + np.exp(-y_pred))
+
+    threshold = 0.5  
+    pred_ones = [pl>threshold for pl in y_pred_s]
+    true_ones = [tl==1 for tl in y_true]
+    return { 'accuracy': accuracy_score(pred_ones, true_ones) }
 
 
 
@@ -76,6 +85,7 @@ def train(dataset):
         'multilabel_model_checkpoints',    # output directory for checkpoints and predictions
         load_best_model_at_end=True,
         evaluation_strategy='epoch',
+        logging_strategy='epoch',
         learning_rate=LEARNING_RATE,
         per_device_train_batch_size=BATCH_SIZE,
         num_train_epochs=TRAIN_EPOCHS,
