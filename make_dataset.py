@@ -51,7 +51,7 @@ def make_dataset():
     dataset = dataset.map(lambda line: {'label': mlb.transform([line['label']])})
 
 
-    with open("fr_binarized.pkl", 'w') as f:
+    with open("fr_binarized.pkl", 'wb') as f:
         pickle.dump(dataset,f)
 
 
