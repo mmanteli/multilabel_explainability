@@ -8,17 +8,18 @@ import pickle
 import sys
 import torch
 from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampler
+from torch import cuda
 import numpy as np
-from sklearn.metrics import classification_report, confusion_matrix, multilabel_confusion_matrix, f1_score, accuracy_score
-
-
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
 # Hyperparameters
-LEARNING_RATE=1e-5
+LEARNING_RATE=3e-5
 BATCH_SIZE=4
 TRAIN_EPOCHS=6
 MODEL_NAME = 'xlm-roberta-base'
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+# these are printed out by make_dataset.py 
+labels = ['HI', 'ID', 'IN', 'IP', 'LY', 'NA', 'OP', 'SP']
 
 # overriding the loss-function in Trainer
 class MultilabelTrainer(Trainer):
@@ -37,7 +38,7 @@ def read_dataset():
   Read the data. Labels should be in the form of binary vectors.
   """
   
-  with open('fr_binarized.pkl', 'rb') as f:
+  with open('en_binarized.pkl', 'rb') as f:
     dataset = pickle.load(f)
   print("Dataset succesfully loaded")
   print(dataset)
@@ -55,6 +56,7 @@ def encode_dataset(d):
     output = tokenizer(" ", truncation= True, padding = True, max_length=512)
     return output
 
+
 def compute_accuracy(pred):
     # flatten them to 1D vectors
     y_pred = pred.predictions.flatten()
@@ -70,11 +72,10 @@ def compute_accuracy(pred):
 
 
 
-
 def train(dataset):
   
   # Model downloading
-  num_labels = len(dataset['train']['label'][0][0])
+  num_labels = len(dataset['train']['label'][0][0]) #here double brackets are needed!
   print("Downloading model")
   model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, num_labels = num_labels)
   
@@ -107,10 +108,32 @@ def train(dataset):
   trainer.train()
   
   results = trainer.evaluate()
-  print(f'Accuracy: {results["eval_accuracy"]}')
   
+  print('Accuracy:', results["eval_accuracy"])
   
+  # for classification report
+  val_predictions = trainer.predict(encoded_dataset['validation'])
 
+  # sanity check; did we even predict anything (a real consern)
+  #counter = 0
+  #predic_s = 1.0/(1.0+ np.exp(- val_predictions.predictions.flatten()))
+  #for i in range(len(predic_s)):
+    #if predic_s[i] > 0.5:
+      #counter += 1
+  #print("predicted ones in all predictions (sanity check): ", counter)
+  
+  # apply sigmoid to predictions and reshape real labels
+  p = 1.0/(1.0 + np.exp(- val_predictions.predictions))
+  t = val_predictions.label_ids.reshape(p.shape)
+
+  pred_ones = [pl>0.5 for pl in p]
+  true_ones = [tl==1 for tl in t]
+
+  # labels are printed by make_dataset.py copy them there to hyperparametres
+  print(classification_report(true_ones,pred_ones, target_names = labels))
+
+  # save the model
+  torch.save(trainer.model,"multilabel_model_en_2.pt")
 
 if __name__=="__main__":
   
