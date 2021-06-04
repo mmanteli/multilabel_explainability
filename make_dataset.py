@@ -1,4 +1,3 @@
-
 from datasets import load_dataset
 import numpy as np
 from sklearn.preprocessing import MultiLabelBinarizer
@@ -28,9 +27,9 @@ def make_dataset():
     dataset_0 = load_dataset(
         'csv', 
         data_files={
-        'train': 'train.tsv', 
-        'validation': 'dev.tsv', 
-        'test': 'test.tsv'
+        'train': 'en_eacl/train.tsv', 
+        'validation': 'en_eacl/dev.tsv', 
+        'test': 'en_eacl/test.tsv'
         },
         delimiter='\t', 
         column_names=['label', 'sentence']
@@ -51,12 +50,13 @@ def make_dataset():
     dataset = dataset.map(lambda line: {'label': mlb.transform([line['label']])})
 
 
-    with open("fr_binarized.pkl", 'wb') as f:
+    with open("en_binarized.pkl", 'wb') as f:
         pickle.dump(dataset,f)
 
-
+    print(labels)
 
 
 
 if __name__=="__main__":
     make_dataset()
+
